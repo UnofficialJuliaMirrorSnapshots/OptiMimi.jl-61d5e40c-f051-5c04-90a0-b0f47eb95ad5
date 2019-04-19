@@ -1,7 +1,7 @@
 using MathProgBase
 using DataFrames
 using Clp
-using SparseArrays
+using SparseArrays, LinearAlgebra
 
 import Base.*, Base.-, Base.+, Base./, Base.max
 
@@ -1073,7 +1073,7 @@ function insertdim(iis::Vector{Int64}, dims::Vector{Int64}, insertat::Int64, dim
         (dimvalue - 1) * prod(dims) + iis
     else
         proddimsleft = prod(dims[1:insertat-1])
-        (div.(iis - 1, proddimsleft) * dimsize + dimvalue - 1) * proddimsleft + (iis - 1) .% proddimsleft + 1
+        (div.(iis .- 1, proddimsleft) * dimsize .+ dimvalue .- 1) * proddimsleft .+ (iis .- 1) .% proddimsleft .+ 1
     end
 end
 
@@ -1207,7 +1207,7 @@ end
 
 function matrixdiagonal(dims::Vector{Int64}, constant::Float64)
     dimlen = prod(dims)
-    speye(dimlen, dimlen) * constant
+    sparse(1.0I, dimlen, dimlen) * constant
 end
 
 function matrixdiagonal(dims::Vector{Int64}, gen::Function, dupover::Vector{Bool})
@@ -1448,8 +1448,8 @@ function matrixintersect(rowdims::Vector{Int64}, coldims::Vector{Int64}, rowdimn
     alljjs2 = zeros(Int64, length(alljjs) * shareddupouter)
 
     for kk in 1:shareddupouter
-        alliis2[(kk - 1) * length(alliis) + (1:length(alliis))] = (kk - 1) * rownotshared + alliis
-        alljjs2[(kk - 1) * length(alljjs) + (1:length(alljjs))] = (kk - 1) * colnotshared + alljjs
+        alliis2[(kk - 1) * length(alliis) .+ (1:length(alliis))] = (kk - 1) * rownotshared .+ alliis
+        alljjs2[(kk - 1) * length(alljjs) .+ (1:length(alljjs))] = (kk - 1) * colnotshared .+ alljjs
     end
 
     sparse(alliis2, alljjs2, allvvs2, prod(rowdims), prod(coldims))
@@ -1505,8 +1505,8 @@ function matrixduplicate_extremes(A::SparseMatrixCSC{Float64, Int64}, rowdims::V
         ## order is vec([(slow, fast) for fast in 1:N, slow in 1:M])
         rowduped = vec([(rowoo - 1) * nrows * rowdupinner + (iis[kk] - 1) * rowdupinner + rowii for rowii in 1:rowdupinner, rowoo in 1:rowdupouter])
         colduped = vec([(coloo - 1) * ncols * coldupinner + (jjs[kk] - 1) * coldupinner + colii for colii in 1:coldupinner, coloo in 1:coldupouter])
-        alliis[(kk - 1) * kkdupnum + (1:kkdupnum)] = repeat(rowduped, outer=[coldupouter*coldupinner])
-        alljjs[(kk - 1) * kkdupnum + (1:kkdupnum)] = repeat(colduped, inner=[rowdupouter*rowdupinner])
+        alliis[(kk - 1) * kkdupnum .+ (1:kkdupnum)] = repeat(rowduped, outer=[coldupouter*coldupinner])
+        alljjs[(kk - 1) * kkdupnum .+ (1:kkdupnum)] = repeat(colduped, inner=[rowdupouter*rowdupinner])
     end
 
     sparse(alliis, alljjs, allvvs, prod(rowdims), prod(coldims))
